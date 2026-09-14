@@ -104,6 +104,8 @@ It uses:
 
 The design is implemented with CSS gradients, `backdrop-filter`, shadows, transparency, and responsive layout rules.
 
+[Watch the Demo on YouTube](https://youtu.be/WTAsm1nJCpY)
+
 ## Privacy
 
 Glass Recorder runs locally on your Mac.
