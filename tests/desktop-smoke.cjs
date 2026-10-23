@@ -7,6 +7,7 @@ const assert = require("node:assert/strict");
     executablePath: process.env.GLASS_EXECUTABLE,
     args: [
       ...(process.env.GLASS_EXECUTABLE ? [] : ["."]),
+      `--user-data-dir=${require("node:fs").mkdtempSync(require("node:path").join(require("node:os").tmpdir(), "glass-test-"))}`,
       "--use-fake-device-for-media-stream",
       "--use-fake-ui-for-media-stream",
     ],
@@ -14,6 +15,7 @@ const assert = require("node:assert/strict");
   try {
     require("node:fs").mkdirSync("release", { recursive: true });
     const page = await app.firstWindow();
+    page.setDefaultTimeout(30000);
     const errors = [];
     page.on("console", (message) => console.log("renderer:", message.text()));
     page.on("pageerror", (error) => errors.push(error.message));
@@ -32,12 +34,24 @@ const assert = require("node:assert/strict");
     await page.emulateMedia({ colorScheme: "light" });
     await page.getByRole("button", { name: "Turn on camera" }).click();
     await page.getByText("Camera ready", { exact: true }).waitFor();
+    await page.getByRole("switch").check();
+    await page
+      .getByText("Looking for a face", { exact: true })
+      .waitFor({ timeout: 60000 });
+    await page.getByRole("switch").uncheck();
+    await page.waitForTimeout(500);
     for (const ratio of ["9:16", "3:4", "1:1", "16:9"]) {
       await page.getByRole("radio", { name: new RegExp(ratio) }).click();
       await page.getByRole("button", { name: "Start recording" }).click();
       await page.waitForTimeout(1400);
       await page.getByRole("button", { name: "Stop recording" }).click();
       await page.getByRole("button", { name: /^Save / }).waitFor();
+      await require("@playwright/test")
+        .expect.poll(
+          () => page.locator(".playback").evaluate((v) => v.videoWidth),
+          { timeout: 15000 },
+        )
+        .toBeGreaterThan(0);
       const result = await page.locator(".playback").evaluate(async (v) => {
         await new Promise((resolve, reject) => {
           if (v.readyState >= 1) return resolve();
@@ -72,7 +86,7 @@ const assert = require("node:assert/strict");
       );
       assert.equal(
         await page
-          .locator(".feed")
+          .locator(".source-video")
           .evaluate((v) =>
             v.srcObject.getTracks().every((t) => t.readyState === "ended"),
           ),
@@ -106,8 +120,7 @@ const assert = require("node:assert/strict");
   } finally {
     await app
       .evaluate(({ BrowserWindow }) => {
-        for (const window of BrowserWindow.getAllWindows())
-          window.removeAllListeners("close");
+        for (const window of BrowserWindow.getAllWindows()) window.destroy();
       })
       .catch(() => {});
     await app.close();

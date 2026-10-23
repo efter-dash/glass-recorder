@@ -1,4 +1,12 @@
-const { app, BrowserWindow, session, dialog, ipcMain } = require("electron");
+const {
+  app,
+  BrowserWindow,
+  session,
+  dialog,
+  ipcMain,
+  shell,
+  net,
+} = require("electron");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const entry = pathToFileURL(path.join(__dirname, "../dist/index.html")).href;
@@ -81,6 +89,41 @@ app.whenReady().then(() => {
       Buffer.from(data),
     );
     return true;
+  });
+  let updateUrl;
+  const trusted = (event) => {
+    if (
+      event.sender !== window?.webContents ||
+      event.senderFrame !== event.sender.mainFrame ||
+      event.senderFrame.url !== entry
+    )
+      throw Error("Untrusted sender");
+  };
+  ipcMain.handle("check-update", async (event) => {
+    trusted(event);
+    const response = await net.fetch(
+      "https://api.github.com/repos/efter-dash/glass-recorder/releases?per_page=20",
+      {
+        headers: { Accept: "application/vnd.github+json" },
+        signal: AbortSignal.timeout(12000),
+      },
+    );
+    if (!response.ok) throw Error("Release check failed");
+    const releases = await response.json();
+    const { selectUpdate } = require("./updates.cjs");
+    const result = selectUpdate(
+      releases,
+      app.getVersion(),
+      process.platform,
+      process.arch,
+    );
+    updateUrl = result.url;
+    return { available: !!updateUrl, version: result.version };
+  });
+  ipcMain.handle("open-update", async (event) => {
+    trusted(event);
+    if (!updateUrl) throw Error("Check for updates first");
+    await shell.openExternal(updateUrl);
   });
   openWindow();
   app.on("activate", () => {

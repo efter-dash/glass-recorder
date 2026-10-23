@@ -10,6 +10,7 @@ import {
   Video,
   VideoOff,
 } from "lucide-react";
+import { useUpdates } from "./useUpdates";
 import { cropFrame } from "./framing";
 type Ratio = "9:16" | "3:4" | "1:1" | "16:9";
 type Status = "idle" | "ready" | "recording" | "preview" | "error";
@@ -65,6 +66,9 @@ export default function Home() {
     lastDetect = useRef(0),
     target = useRef({ x: 0.5, y: 0.5, time: 0 }),
     center = useRef({ x: 0.5, y: 0.5 });
+  const updates = useUpdates(
+    busy || status === "recording" || status === "preview",
+  );
   const active = status === "ready" || status === "recording";
   const replaceUrl = useCallback((next: string) => {
     if (urlRef.current) URL.revokeObjectURL(urlRef.current);
@@ -711,6 +715,18 @@ export default function Home() {
         </aside>
       </section>
       <footer>
+        <button
+          className={`update-button ${updates.available ? "pending" : ""}`}
+          disabled={updates.disabled}
+          onClick={() => void updates.activate()}
+          title={
+            status === "preview"
+              ? "Save your capture and choose another before updating"
+              : "Check the repository for a newer version"
+          }
+        >
+          <RefreshCw size={14} /> {updates.label}
+        </button>
         <span>
           <i />
           Nothing is uploaded

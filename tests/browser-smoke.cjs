@@ -50,6 +50,36 @@ const path = require("node:path");
       `http://127.0.0.1:${server.address().port}/glass-recorder/`,
     );
     await expect(page.locator(".brand img")).toBeVisible();
+    const updateButton = page.getByRole("button", {
+      name: "Up to date · Check again",
+      exact: true,
+    });
+    await expect(updateButton).toBeVisible();
+    await page.route("**/version.json?*", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ buildId: "new-test-build" }),
+      }),
+    );
+    await updateButton.click();
+    await expect(
+      page.getByRole("button", { name: "Update available", exact: true }),
+    ).toBeVisible();
+    await page.unroute("**/version.json?*");
+    await Promise.all([
+      page.waitForEvent("load"),
+      page
+        .getByRole("button", { name: "Update available", exact: true })
+        .click(),
+    ]);
+    await expect(
+      page.getByRole("button", {
+        name: "Up to date · Check again",
+        exact: true,
+      }),
+    ).toBeVisible();
+
     await page.getByRole("button", { name: "Dark", exact: true }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
     await page.reload();

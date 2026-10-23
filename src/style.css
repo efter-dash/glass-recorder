@@ -1115,3 +1115,35 @@ html[data-theme="dark"] .theme-control button[aria-pressed="true"] {
     margin-left: 0;
   }
 }
+.update-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #63859b50;
+  border-radius: 12px;
+  padding: 9px 12px;
+  background: #ffffff50;
+  color: var(--ink);
+  cursor: pointer;
+}
+.update-button.pending {
+  color: #0066a8;
+  background: #d7f2ff;
+  border-color: #42b3ed;
+}
+.update-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+html[data-theme="dark"] .update-button {
+  background: #203a49;
+  color: #d5eaf6;
+}
+html[data-theme="dark"] .update-button.pending {
+  background: #145574;
+  color: #e0f7ff;
+}
+footer {
+  flex-wrap: wrap;
+  gap: 12px;
+}

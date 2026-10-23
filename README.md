@@ -46,9 +46,27 @@ The website requires HTTPS, camera/microphone access, canvas capture, and MediaR
 
 Automated Chromium tests exercise all four video and PNG ratios, playback, downloads, camera switching with two simulated cameras, theme persistence, and actual face-model initialization. Crop geometry is unit-tested. A local optional moving-portrait test also verified face positions moving left to right; this is not a physical webcam test. Physical-device testing in Safari, Chrome, and Edge is still recommended; those browsers have not all been verified independently. Mobile recording is not yet verified.
 
-## Desktop previews
+## Desktop downloads (preview)
 
-The earlier Windows/macOS packaging remains in the source for development. **Do not use the earlier Mac preview as a normal installer:** its signature failed verification and it has not been Developer ID signed or notarized. The browser app above is the recommended distribution. The v0.1.1 desktop release remains unpublished while the project moves to browser use.
+The [live web version](https://efter-dash.github.io/glass-recorder/) always receives the latest successfully deployed `main` updates. The desktop app runs locally and is updated separately through published GitHub releases.
+
+| Platform | Download v0.2.0 |
+|---|---|
+| Mac — Apple Silicon (M1 and later) | [DMG](https://github.com/efter-dash/glass-recorder/releases/download/v0.2.0/Glass-Recorder-0.2.0-mac-arm64.dmg) |
+| Mac — Intel | [DMG](https://github.com/efter-dash/glass-recorder/releases/download/v0.2.0/Glass-Recorder-0.2.0-mac-x64.dmg) |
+| Windows — x64 | [Installer](https://github.com/efter-dash/glass-recorder/releases/download/v0.2.0/Glass-Recorder-0.2.0-win-x64.exe) |
+
+[All releases and ZIP alternatives](https://github.com/efter-dash/glass-recorder/releases). The owner reports that the earlier ARM64 build works on their Mac; this does not establish compatibility on every Mac. These builds are **unsigned previews**, not Developer ID signed/notarized or Windows code-signed. Gatekeeper/SmartScreen can warn or block them; the website is the no-install alternative. Do not disable OS security protections to install.
+
+### Updates
+
+The bottom-left update button checks on startup, every five minutes, and when returning to the app. You can also click it to check manually. Offline/API failures show a retry state, not a false “up to date” result.
+
+- **Website:** checks this site's build identifier. “Update available” reloads the latest deployed interface.
+- **Desktop:** checks public releases in this repository, including explicitly labeled preview releases, and selects a newer matching Mac/Windows installer. Clicking opens the download in your browser; run the downloaded installer yourself. This is **not silent/in-place auto-installation**.
+- Updating is disabled while recording or reviewing a capture; save it and choose another capture first. No media is sent during version checks. GitHub receives normal version-check/download requests.
+- **Existing v0.1.1 installations need one manual upgrade to v0.2.0** to get the update button. Old binaries cannot acquire this feature by themselves.
+- Repository commits update the website after Pages CI succeeds. Desktop notifications require a newer published release with matching installer assets, not just a source commit.
 
 ## Development
 
