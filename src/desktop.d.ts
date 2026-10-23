@@ -1,3 +1,3 @@
 interface Window {
-  glassRecorder: { save(data: ArrayBuffer, name: string): Promise<boolean> };
+  glassRecorder?: { save(data: ArrayBuffer, name: string): Promise<boolean> };
 }

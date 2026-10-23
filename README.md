@@ -1,92 +1,62 @@
 # Glass Recorder
 
-A private, offline camera recorder for Windows and macOS. Built with Codex.
+<p align="center"><img src="public/app-icon.png" alt="Glowing Glass Recorder camera" width="128" /></p>
 
-## Download version 0.1.1 — preview
+## Open the recorder — no installation
 
-Self-contained desktop apps for Windows and macOS: no Node.js, terminal, or development server required.
+### [Launch Glass Recorder](https://efter-dash.github.io/glass-recorder/)
 
-| Your device | Download | Included installer |
-|---|---|---|
-| Windows x64 | [Download for Windows](https://github.com/efter-dash/glass-recorder/actions/runs/39937136534/artifacts/12493982498) | `Glass-Recorder-0.1.1-win-x64.exe` |
-| Mac with Apple Silicon (M-series) | [Download for Apple Silicon](https://github.com/efter-dash/glass-recorder/actions/runs/39937136534/artifacts/12494037453) | `Glass-Recorder-0.1.1-mac-arm64.dmg` and app ZIP |
-| Mac with an Intel processor | [Download for Intel Mac](https://github.com/efter-dash/glass-recorder/actions/runs/39937136534/artifacts/12493249429) | `Glass-Recorder-0.1.1-mac-x64.dmg` and app ZIP |
+A free-to-access browser camera recorder with a glowing cyan identity and light/dark glass interface. Open the website, grant camera and microphone permission, record, and download your video. No app installer, Apple Developer account, or GitHub sign-in is needed to use it.
 
-**GitHub sign-in is required.** These links download GitHub Actions artifact ZIPs: extract the downloaded ZIP first to find the installer. Artifacts expire according to the repository's retention policy. If a link expires, check [Desktop builds](https://github.com/efter-dash/glass-recorder/actions/workflows/desktop.yml). A permanent public release has not yet been published; future releases will appear under [Releases](https://github.com/efter-dash/glass-recorder/releases).
+**Hosted interface, local recording:** GitHub Pages serves the website files. Camera, microphone, cropping, and encoding run in your browser. Recordings are not uploaded to GitHub or any application server. The app contains no analytics or recording upload endpoint. Hosting providers still receive ordinary requests for the website itself.
 
-### Install
+## How to use
 
-- **Windows:** extract the artifact ZIP, run the `.exe`, and follow the installer.
-- **Mac:** extract the artifact ZIP, open the `.dmg`, and drag Glass Recorder into Applications. The included app ZIP is an alternative. Choose Apple Silicon or Intel based on **About This Mac**.
-- Open Glass Recorder and grant camera and microphone access when requested.
+1. Open the link in a current desktop browser.
+2. Select an aspect ratio, then choose **Turn on camera**.
+3. Allow camera and microphone permissions. You can mute the microphone before recording.
+4. Choose **Start recording**, then **Stop recording**.
+5. Preview and choose **Save MP4** or **Save WEBM**, depending on browser support.
 
-**Unsigned preview:** Windows SmartScreen and macOS Gatekeeper may warn or block launch. The Mac app is not notarized. Only install a build you trust; do not disable system security globally. Real-device installation and hardware testing remain necessary before a polished public release.
+Your browser controls the download location and whether it asks where to save. Keep the tab open and visible while recording. Save before closing, refreshing, or choosing **Record another**: recordings remain in memory and are not recovered later. Long recordings may use substantial memory. This version needs an internet connection to load; offline installation is not implemented.
 
-## What's new in 0.1.1
-
-- A cute, glowing cyan camera icon across the app, Windows ICO, and macOS ICNS assets.
-- Refined light and dark glass surfaces, softer shadows, balanced spacing, and cyan accents.
-- Clear Standby, Ready, Recording, and Captured status labels.
-- Accessible focus states, camera/microphone toggle states, and reduced-motion styling.
-- The same offline recording workflow, native save dialog, and four aspect ratios.
-
-<p align="center"><img src="public/app-icon.png" alt="Glass Recorder glowing camera icon" width="128" /></p>
-
-## Recording
-
-1. Choose an aspect ratio and turn on the camera.
-2. Enable or mute the microphone, then start recording.
-3. Stop, preview, and choose **Save**. The native save dialog starts in Downloads.
-
-| Ratio | Output size |
+| Aspect ratio | Output dimensions |
 |---|---|
 | 9:16 | 1080 × 1920 |
 | 3:4 | 1080 × 1440 |
 | 1:1 | 1080 × 1080 |
 | 16:9 | 1920 × 1080 |
 
-The app center-crops and mirrors the recorded image to match the preview. It prefers a FaceTime camera when available, otherwise the system default. MP4 is preferred when the runtime supports it; otherwise recordings are saved as WebM with the correct extension. Format availability is detected at runtime, not promised for every device.
+The recorder center-crops and mirrors the output to match the preview. It prefers a FaceTime camera if available, otherwise the system default. Camera and microphone tracks are stopped when recording finishes.
 
-Recordings stay in memory until saved. Closing the app discards unsaved recordings; a confirmation appears before closing. Long recordings can consume substantial memory. Camera and microphone tracks are released when recording stops. No account, analytics, remote server, or upload is required.
+## Browser compatibility
+
+The website requires HTTPS, camera/microphone access, canvas capture, and MediaRecorder support. It checks recording formats at runtime and prefers MP4, with WebM fallback. Format and encoding support vary by browser and device; an MP4-only guarantee is not made. If access fails, check browser site permissions and close other apps using the camera.
+
+Automated Chromium tests exercise all four ratios, playback, browser downloads, and repeated recording with simulated camera/microphone inputs. Physical-device testing in Safari, Chrome, and Edge is still recommended; those browsers have not all been verified independently. Mobile recording is not yet verified.
+
+## Desktop previews
+
+The earlier Windows/macOS packaging remains in the source for development. **Do not use the earlier Mac preview as a normal installer:** its signature failed verification and it has not been Developer ID signed or notarized. The browser app above is the recommended distribution. The v0.1.1 desktop release remains unpublished while the project moves to browser use.
 
 ## Development
 
-Use Node.js 22 or newer:
+Built with React, TypeScript, Vite, and browser media APIs, with assistance from Codex.
 
 ```sh
 npm ci
-npm start
-```
-
-The original local React recorder has been restored into `src/`. Vite produces static assets and Electron bundles the runtime. The legacy Mac launcher that depended on a developer-specific path and a development server is not needed.
-
-```sh
 npm run build
 npm test
-npm run pack                 # unpacked app for the current platform
-npm run dist -- --mac --arm64
-npm run dist -- --mac --x64
-npm run dist -- --win --x64   # run on Windows
+npx playwright install chromium
+node tests/browser-smoke.cjs
+npx vite preview --host 127.0.0.1
 ```
 
-Output is written to `release/`. Electron runs with renderer sandboxing and context isolation, without Node.js access in the UI. Permissions are restricted to media requests from the bundled app. A restrictive content security policy blocks network connections and external navigation is disabled.
+Vite emits static files into `dist/` with relative asset paths. Serve over HTTPS in production (localhost is suitable for local testing). The browser downloads Blob recordings directly; the optional Electron bridge is used only when running the legacy desktop build. A content security policy blocks network connections from application scripts.
 
-## Releases and verification
+## Deployment
 
-`.github/workflows/desktop.yml` builds on macOS and Windows runners. Pushes to `main` and pull requests produce downloadable workflow artifacts. A `v*` tag builds all three targets and creates a **draft** GitHub release; it does not publish automatically. Match the tag to the version in `package.json`.
-
-### Verified for this preview
-
-[Build run 39937136534](https://github.com/efter-dash/glass-recorder/actions/runs/39937136534) passed all three installer jobs: Windows x64, macOS arm64, and macOS x64. TypeScript, production builds, packaging checks, and simulated camera/microphone recording tests passed. Tests cover all four output resolutions, playback, native file saving, repeated recordings, and capture-device cleanup. The icon and light/dark UI were also visually inspected locally.
-
-The Intel installer was built successfully, but the Mac CI runtime test uses its host architecture; this does not establish physical Intel Mac compatibility or real-camera behavior. Installers remain previews.
-
-### Before public release
-
-- Test installation and real camera/microphone capture on Windows, Intel Mac, and Apple Silicon Mac.
-- Check all four ratios, audio/mute, replay, save cancellation, repeated recordings, denied permissions, and quitting with unsaved work.
-- Configure Apple Developer ID signing and notarization and Windows code signing using protected CI secrets. The preview workflow currently disables automatic signing identity discovery.
-- Publish the draft release only after checking its installers and limitations.
+`.github/workflows/pages.yml` builds, tests browser recording/downloads, and deploys `dist/` to GitHub Pages after pushes to `main`. Hosting uses GitHub Actions with the `github-pages` environment. Only static assets are deployed: no backend, credentials, or user recordings.
 
 ## The Story
 

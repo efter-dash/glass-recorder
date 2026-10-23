@@ -54,6 +54,13 @@ export default function Home() {
   const startCamera = useCallback(async () => {
     setBusy(true);
     try {
+      if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+        setError(
+          "Open Glass Recorder using its HTTPS link in a supported browser.",
+        );
+        setStatus("error");
+        return;
+      }
       setError("");
       setFormatError("");
       stopStream();
@@ -103,15 +110,31 @@ export default function Home() {
       recordingBlob.current = null;
       chunks.current = [];
       setStatus("ready");
-    } catch {
+    } catch (error) {
       stopStream();
-      setError("Allow camera and microphone access, then try again.");
+      const name = error instanceof DOMException ? error.name : "";
+      setError(
+        name === "NotFoundError"
+          ? "Connect a camera and microphone, then try again."
+          : name === "NotReadableError"
+            ? "Your camera may be in use by another app. Close it and try again."
+            : "Allow camera and microphone access in your browser, then try again.",
+      );
       setStatus("error");
     } finally {
       setBusy(false);
     }
   }, [stopStream]);
   useEffect(() => () => stopStream(), [stopStream]);
+  useEffect(() => {
+    if (status !== "recording" && status !== "preview") return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [status]);
   useEffect(() => {
     if (status !== "recording") return;
     const id = setInterval(() => setElapsed((v) => v + 1), 1000);
@@ -231,10 +254,20 @@ export default function Home() {
     setFormatError("");
     try {
       const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-      await window.glassRecorder.save(
-        await recordingBlob.current.arrayBuffer(),
-        `Glass-Recording-${ratio.replace(":", "x")}-${stamp}.${extension}`,
-      );
+      const filename = `Glass-Recording-${ratio.replace(":", "x")}-${stamp}.${extension}`;
+      if (window.glassRecorder) {
+        await window.glassRecorder.save(
+          await recordingBlob.current.arrayBuffer(),
+          filename,
+        );
+      } else {
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      }
     } catch {
       setFormatError("Could not save the recording. Try another folder.");
     } finally {
@@ -301,7 +334,7 @@ export default function Home() {
                 </h2>
                 <p>
                   {error ||
-                    "Your video stays on this device until you save it."}
+                    "Record here. Save to your device. Nothing is uploaded."}
                 </p>
                 <button
                   className="primary compact"
@@ -465,7 +498,7 @@ export default function Home() {
           <i />
           Nothing is uploaded
         </span>
-        <span>Choose where to save your recording</span>
+        <span>Keep this tab open while recording · Save before leaving</span>
       </footer>
       <canvas ref={canvas} />
     </main>
