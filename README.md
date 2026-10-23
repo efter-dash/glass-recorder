@@ -2,19 +2,35 @@
 
 A private, offline camera recorder for Windows and macOS. Built with Codex.
 
-## Desktop downloads
+## Download version 0.1.1 — preview
 
-Desktop builds are being introduced in this branch. There is no published desktop release yet.
+Self-contained desktop apps for Windows and macOS: no Node.js, terminal, or development server required.
 
-The build workflow produces:
+| Your device | Download | Included installer |
+|---|---|---|
+| Windows x64 | [Download for Windows](https://github.com/efter-dash/glass-recorder/actions/runs/39937136534/artifacts/12493982498) | `Glass-Recorder-0.1.1-win-x64.exe` |
+| Mac with Apple Silicon (M-series) | [Download for Apple Silicon](https://github.com/efter-dash/glass-recorder/actions/runs/39937136534/artifacts/12494037453) | `Glass-Recorder-0.1.1-mac-arm64.dmg` and app ZIP |
+| Mac with an Intel processor | [Download for Intel Mac](https://github.com/efter-dash/glass-recorder/actions/runs/39937136534/artifacts/12493249429) | `Glass-Recorder-0.1.1-mac-x64.dmg` and app ZIP |
 
-- Windows x64: `Glass-Recorder-<version>-win-x64.exe` installer.
-- Apple Silicon Mac: `Glass-Recorder-<version>-mac-arm64.dmg` and ZIP.
-- Intel Mac: `Glass-Recorder-<version>-mac-x64.dmg` and ZIP.
+**GitHub sign-in is required.** These links download GitHub Actions artifact ZIPs: extract the downloaded ZIP first to find the installer. Artifacts expire according to the repository's retention policy. If a link expires, check [Desktop builds](https://github.com/efter-dash/glass-recorder/actions/workflows/desktop.yml). A permanent public release has not yet been published; future releases will appear under [Releases](https://github.com/efter-dash/glass-recorder/releases).
 
-Find successful preview builds under [Actions](https://github.com/efter-dash/glass-recorder/actions), open **Desktop builds**, and download the appropriate artifact (GitHub login required). Published builds will appear under [Releases](https://github.com/efter-dash/glass-recorder/releases). End users do not need Node.js, a terminal, or a browser server.
+### Install
 
-On Windows, run the installer. On macOS, open the DMG and drag Glass Recorder into Applications. Launch the app and allow camera/microphone access. Preview builds are unsigned and not notarized: Windows SmartScreen and macOS Gatekeeper may warn or block launch. Only install builds you trust; do not disable system security globally. These previews are not yet a signed public release.
+- **Windows:** extract the artifact ZIP, run the `.exe`, and follow the installer.
+- **Mac:** extract the artifact ZIP, open the `.dmg`, and drag Glass Recorder into Applications. The included app ZIP is an alternative. Choose Apple Silicon or Intel based on **About This Mac**.
+- Open Glass Recorder and grant camera and microphone access when requested.
+
+**Unsigned preview:** Windows SmartScreen and macOS Gatekeeper may warn or block launch. The Mac app is not notarized. Only install a build you trust; do not disable system security globally. Real-device installation and hardware testing remain necessary before a polished public release.
+
+## What's new in 0.1.1
+
+- A cute, glowing cyan camera icon across the app, Windows ICO, and macOS ICNS assets.
+- Refined light and dark glass surfaces, softer shadows, balanced spacing, and cyan accents.
+- Clear Standby, Ready, Recording, and Captured status labels.
+- Accessible focus states, camera/microphone toggle states, and reduced-motion styling.
+- The same offline recording workflow, native save dialog, and four aspect ratios.
+
+<p align="center"><img src="public/app-icon.png" alt="Glass Recorder glowing camera icon" width="128" /></p>
 
 ## Recording
 
@@ -57,9 +73,15 @@ Output is written to `release/`. Electron runs with renderer sandboxing and cont
 
 ## Releases and verification
 
-`.github/workflows/desktop.yml` builds on macOS and Windows runners. Pushes and pull requests produce downloadable workflow artifacts. A `v*` tag builds all three targets and creates a **draft** GitHub release; it does not publish automatically. Match the tag to the version in `package.json`.
+`.github/workflows/desktop.yml` builds on macOS and Windows runners. Pushes to `main` and pull requests produce downloadable workflow artifacts. A `v*` tag builds all three targets and creates a **draft** GitHub release; it does not publish automatically. Match the tag to the version in `package.json`.
 
-Before public release:
+### Verified for this preview
+
+[Build run 39937136534](https://github.com/efter-dash/glass-recorder/actions/runs/39937136534) passed all three installer jobs: Windows x64, macOS arm64, and macOS x64. TypeScript, production builds, packaging checks, and simulated camera/microphone recording tests passed. Tests cover all four output resolutions, playback, native file saving, repeated recordings, and capture-device cleanup. The icon and light/dark UI were also visually inspected locally.
+
+The Intel installer was built successfully, but the Mac CI runtime test uses its host architecture; this does not establish physical Intel Mac compatibility or real-camera behavior. Installers remain previews.
+
+### Before public release
 
 - Test installation and real camera/microphone capture on Windows, Intel Mac, and Apple Silicon Mac.
 - Check all four ratios, audio/mute, replay, save cancellation, repeated recordings, denied permissions, and quitting with unsaved work.
@@ -74,7 +96,7 @@ A simple recording task was wasting too much time, so I thought:
 
 > What if I made an app that records in different aspect ratios and saves videos directly to Downloads?
 
-That is exactly what Glass Recorder does.
+Glass Recorder grew from that idea into an offline desktop app with a save dialog that starts in Downloads.
 
 I originally created it for myself—and for anyone else who appreciates this tiny bit of convenience.
 
