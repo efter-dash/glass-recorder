@@ -1,8 +1,92 @@
 # Glass Recorder
 
-A private, local video recorder for macOS with flexible aspect ratios, MP4 output, and direct saving to Downloads.
+A private, offline camera recorder for Windows and macOS. Built with Codex.
 
-Built with Codex to solve a small but frustrating problem.
+## Download version 0.1.1 — preview
+
+Self-contained desktop apps for Windows and macOS: no Node.js, terminal, or development server required.
+
+| Your device | Download | Included installer |
+|---|---|---|
+| Windows x64 | [Download for Windows](https://github.com/efter-dash/glass-recorder/actions/runs/39937136534/artifacts/12493982498) | `Glass-Recorder-0.1.1-win-x64.exe` |
+| Mac with Apple Silicon (M-series) | [Download for Apple Silicon](https://github.com/efter-dash/glass-recorder/actions/runs/39937136534/artifacts/12494037453) | `Glass-Recorder-0.1.1-mac-arm64.dmg` and app ZIP |
+| Mac with an Intel processor | [Download for Intel Mac](https://github.com/efter-dash/glass-recorder/actions/runs/39937136534/artifacts/12493249429) | `Glass-Recorder-0.1.1-mac-x64.dmg` and app ZIP |
+
+**GitHub sign-in is required.** These links download GitHub Actions artifact ZIPs: extract the downloaded ZIP first to find the installer. Artifacts expire according to the repository's retention policy. If a link expires, check [Desktop builds](https://github.com/efter-dash/glass-recorder/actions/workflows/desktop.yml). A permanent public release has not yet been published; future releases will appear under [Releases](https://github.com/efter-dash/glass-recorder/releases).
+
+### Install
+
+- **Windows:** extract the artifact ZIP, run the `.exe`, and follow the installer.
+- **Mac:** extract the artifact ZIP, open the `.dmg`, and drag Glass Recorder into Applications. The included app ZIP is an alternative. Choose Apple Silicon or Intel based on **About This Mac**.
+- Open Glass Recorder and grant camera and microphone access when requested.
+
+**Unsigned preview:** Windows SmartScreen and macOS Gatekeeper may warn or block launch. The Mac app is not notarized. Only install a build you trust; do not disable system security globally. Real-device installation and hardware testing remain necessary before a polished public release.
+
+## What's new in 0.1.1
+
+- A cute, glowing cyan camera icon across the app, Windows ICO, and macOS ICNS assets.
+- Refined light and dark glass surfaces, softer shadows, balanced spacing, and cyan accents.
+- Clear Standby, Ready, Recording, and Captured status labels.
+- Accessible focus states, camera/microphone toggle states, and reduced-motion styling.
+- The same offline recording workflow, native save dialog, and four aspect ratios.
+
+<p align="center"><img src="public/app-icon.png" alt="Glass Recorder glowing camera icon" width="128" /></p>
+
+## Recording
+
+1. Choose an aspect ratio and turn on the camera.
+2. Enable or mute the microphone, then start recording.
+3. Stop, preview, and choose **Save**. The native save dialog starts in Downloads.
+
+| Ratio | Output size |
+|---|---|
+| 9:16 | 1080 × 1920 |
+| 3:4 | 1080 × 1440 |
+| 1:1 | 1080 × 1080 |
+| 16:9 | 1920 × 1080 |
+
+The app center-crops and mirrors the recorded image to match the preview. It prefers a FaceTime camera when available, otherwise the system default. MP4 is preferred when the runtime supports it; otherwise recordings are saved as WebM with the correct extension. Format availability is detected at runtime, not promised for every device.
+
+Recordings stay in memory until saved. Closing the app discards unsaved recordings; a confirmation appears before closing. Long recordings can consume substantial memory. Camera and microphone tracks are released when recording stops. No account, analytics, remote server, or upload is required.
+
+## Development
+
+Use Node.js 22 or newer:
+
+```sh
+npm ci
+npm start
+```
+
+The original local React recorder has been restored into `src/`. Vite produces static assets and Electron bundles the runtime. The legacy Mac launcher that depended on a developer-specific path and a development server is not needed.
+
+```sh
+npm run build
+npm test
+npm run pack                 # unpacked app for the current platform
+npm run dist -- --mac --arm64
+npm run dist -- --mac --x64
+npm run dist -- --win --x64   # run on Windows
+```
+
+Output is written to `release/`. Electron runs with renderer sandboxing and context isolation, without Node.js access in the UI. Permissions are restricted to media requests from the bundled app. A restrictive content security policy blocks network connections and external navigation is disabled.
+
+## Releases and verification
+
+`.github/workflows/desktop.yml` builds on macOS and Windows runners. Pushes to `main` and pull requests produce downloadable workflow artifacts. A `v*` tag builds all three targets and creates a **draft** GitHub release; it does not publish automatically. Match the tag to the version in `package.json`.
+
+### Verified for this preview
+
+[Build run 39937136534](https://github.com/efter-dash/glass-recorder/actions/runs/39937136534) passed all three installer jobs: Windows x64, macOS arm64, and macOS x64. TypeScript, production builds, packaging checks, and simulated camera/microphone recording tests passed. Tests cover all four output resolutions, playback, native file saving, repeated recordings, and capture-device cleanup. The icon and light/dark UI were also visually inspected locally.
+
+The Intel installer was built successfully, but the Mac CI runtime test uses its host architecture; this does not establish physical Intel Mac compatibility or real-camera behavior. Installers remain previews.
+
+### Before public release
+
+- Test installation and real camera/microphone capture on Windows, Intel Mac, and Apple Silicon Mac.
+- Check all four ratios, audio/mute, replay, save cancellation, repeated recordings, denied permissions, and quitting with unsaved work.
+- Configure Apple Developer ID signing and notarization and Windows code signing using protected CI secrets. The preview workflow currently disables automatic signing identity discovery.
+- Publish the draft release only after checking its installers and limitations.
 
 ## The Story
 
@@ -12,116 +96,9 @@ A simple recording task was wasting too much time, so I thought:
 
 > What if I made an app that records in different aspect ratios and saves videos directly to Downloads?
 
-That is exactly what Glass Recorder does.
+Glass Recorder grew from that idea into an offline desktop app with a save dialog that starts in Downloads.
 
 I originally created it for myself—and for anyone else who appreciates this tiny bit of convenience.
 
-## Features
 
-- Uses the Mac’s FaceTime camera by default
-- Records microphone audio
-- Supports four aspect ratios:
-  - **9:16** — Reels and Shorts
-  - **3:4** — Portrait posts
-  - **1:1** — Square posts
-  - **16:9** — Landscape video
-- Produces MP4 recordings using H.264/AAC when supported
-- Saves videos directly to the browser’s Downloads location
-- Provides a live, mirrored camera preview
-- Crops the actual recorded output—not only the preview
-- Includes recording, playback, and download controls
-- Runs locally without uploading recordings
-- Includes a native macOS menu-bar companion
-- Uses a macOS-inspired Liquid Glass interface
-- Supports light and dark appearances
-- Adapts to different screen sizes
-
-## How It Works
-
-Glass Recorder captures the camera and microphone using the browser’s `MediaDevices.getUserMedia()` API.
-
-After camera permission is granted, the app examines the available video-input devices and selects the Mac’s FaceTime camera when it is available.
-
-The live camera feed is drawn onto an HTML `<canvas>` at the dimensions required for the selected aspect ratio:
-
-| Ratio | Output resolution | Intended use |
-|---|---:|---|
-| 9:16 | 1080 × 1920 | Reels and Shorts |
-| 3:4 | 1080 × 1440 | Portrait posts |
-| 1:1 | 1080 × 1080 | Square posts |
-| 16:9 | 1920 × 1080 | Landscape video |
-
-The canvas uses center-cropping calculations to preserve the camera feed’s proportions while filling the selected frame. It is then converted into a 30 FPS `MediaStream` using `HTMLCanvasElement.captureStream()`.
-
-The microphone track is added to this output stream, and the browser’s `MediaRecorder` API records the combined video and audio.
-
-The completed recording is converted into a local Blob URL for previewing and downloading. Nothing is uploaded to an external server.
-
-## Technical Stack
-
-- **Next.js**
-- **React**
-- **TypeScript**
-- **Vinext**
-- **Vite**
-- **Tailwind CSS**
-- **Lucide icons**
-- **HTML Canvas API**
-- **MediaDevices API**
-- **MediaRecorder API**
-- **MediaStream API**
-- **WebMCP**
-- **AppKit**
-- **Objective-C**
-- **macOS `NSStatusItem`**
-- **Codex**
-
-## Native Menu-Bar Companion
-
-Glass Recorder includes a lightweight native macOS companion built with Objective-C and AppKit.
-
-It uses `NSStatusItem` to display a persistent camera icon in the macOS menu bar. The companion starts the local application server without displaying a Terminal window and opens the recorder in Safari for MP4/H.264 compatibility.
-
-The menu-bar controls include:
-
-- Open Recorder
-- Restart Recorder
-- Quit Glass Recorder
-
-## Liquid Glass Interface
-
-The interface is inspired by the Liquid Glass design language used in modern macOS.
-
-It uses:
-
-- Layered translucent surfaces
-- Background blur and saturation
-- Specular borders
-- Soft ambient color
-- Adaptive light and dark themes
-- Native macOS typography
-- Responsive aspect-ratio transitions
-
-The design is implemented with CSS gradients, `backdrop-filter`, shadows, transparency, and responsive layout rules.
-
-[Watch the Demo on YouTube](https://youtu.be/WTAsm1nJCpY)
-
-## Privacy
-
-Glass Recorder runs locally on your Mac.
-
-- Camera processing happens on the device
-- Recordings are held in browser memory
-- Videos are not uploaded
-- No account is required
-- No analytics or tracking is included
-- A file is created only when you choose to save it
-
-## Running the App
-
-### Menu-bar application
-
-Open:
-
-```text
-Glass Recorder.app
+[Watch the original demo](https://youtu.be/WTAsm1nJCpY)
