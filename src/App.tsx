@@ -10,8 +10,11 @@ import {
   Video,
   VideoOff,
 } from "lucide-react";
+import { cropFrame } from "./framing";
 type Ratio = "9:16" | "3:4" | "1:1" | "16:9";
 type Status = "idle" | "ready" | "recording" | "preview" | "error";
+type Mode = "video" | "photo";
+type Theme = "system" | "light" | "dark";
 const sizes: Record<Ratio, { width: number; height: number }> = {
   "9:16": { width: 1080, height: 1920 },
   "3:4": { width: 1080, height: 1440 },
@@ -20,191 +23,305 @@ const sizes: Record<Ratio, { width: number; height: number }> = {
 };
 const ratioLabels: Record<Ratio, string> = {
   "9:16": "Reels · Shorts",
-  "3:4": "Portrait post",
-  "1:1": "Square post",
+  "3:4": "Portrait",
+  "1:1": "Square",
   "16:9": "Landscape",
 };
 const clock = (n: number) =>
   `${String(Math.floor(n / 60)).padStart(2, "0")}:${String(n % 60).padStart(2, "0")}`;
-
 export default function Home() {
   const [ratio, setRatio] = useState<Ratio>("9:16"),
     [status, setStatus] = useState<Status>("idle"),
-    [muted, setMuted] = useState(false),
+    [mode, setMode] = useState<Mode>("video");
+  const [muted, setMuted] = useState(false),
     [cameraOff, setCameraOff] = useState(false),
     [elapsed, setElapsed] = useState(0),
     [error, setError] = useState(""),
     [url, setUrl] = useState(""),
-    [cameraName, setCameraName] = useState("Default camera"),
     [formatError, setFormatError] = useState(""),
     [extension, setExtension] = useState("mp4"),
     [busy, setBusy] = useState(false);
+  const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]),
+    [selectedCamera, setSelectedCamera] = useState("");
+  const [follow, setFollow] = useState(false),
+    [tracking, setTracking] = useState("Off");
+  const [theme, setTheme] = useState<Theme>(() => {
+    try {
+      const t = localStorage.getItem("glass-theme");
+      return t === "dark" || t === "light" ? t : "system";
+    } catch {
+      return "system";
+    }
+  });
   const video = useRef<HTMLVideoElement>(null),
     canvas = useRef<HTMLCanvasElement>(null),
     stream = useRef<MediaStream | null>(null),
     recorder = useRef<MediaRecorder | null>(null),
-    chunks = useRef<Blob[]>([]),
-    frame = useRef<number | null>(null),
-    recordingBlob = useRef<Blob | null>(null);
+    recordingBlob = useRef<Blob | null>(null),
+    urlRef = useRef("");
+  const worker = useRef<Worker | null>(null),
+    workerReady = useRef(false),
+    pendingFrame = useRef(false),
+    lastDetect = useRef(0),
+    target = useRef({ x: 0.5, y: 0.5, time: 0 }),
+    center = useRef({ x: 0.5, y: 0.5 });
+  const active = status === "ready" || status === "recording";
+  const replaceUrl = useCallback((next: string) => {
+    if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+    urlRef.current = next;
+    setUrl(next);
+  }, []);
   const stopStream = useCallback(() => {
     stream.current?.getTracks().forEach((t) => t.stop());
     stream.current = null;
-    if (frame.current) cancelAnimationFrame(frame.current);
   }, []);
-  const startCamera = useCallback(async () => {
-    setBusy(true);
+  const refreshCameras = useCallback(async () => {
     try {
-      if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
-        setError(
-          "Open Glass Recorder using its HTTPS link in a supported browser.",
-        );
-        setStatus("error");
-        return;
-      }
-      setError("");
-      setFormatError("");
-      stopStream();
-      let s = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-          facingMode: "user",
-        },
-        audio: true,
-      });
-      stream.current = s;
-      const devices = await navigator.mediaDevices.enumerateDevices(),
-        faceTime = devices.find(
-          (d) =>
-            d.kind === "videoinput" &&
-            d.label.toLowerCase().includes("facetime"),
-        );
-      if (
-        faceTime &&
-        s.getVideoTracks()[0]?.getSettings().deviceId !== faceTime.deviceId
-      ) {
-        s.getTracks().forEach((t) => t.stop());
-        s = await navigator.mediaDevices.getUserMedia({
-          video: {
-            deviceId: { exact: faceTime.deviceId },
-            width: { ideal: 1920 },
-            height: { ideal: 1080 },
-          },
-          audio: true,
-        });
-      }
-      stream.current = s;
-      setCameraName(
-        s.getVideoTracks()[0]?.label || faceTime?.label || "Default camera",
+      setCameras(
+        (await navigator.mediaDevices.enumerateDevices()).filter(
+          (d) => d.kind === "videoinput",
+        ),
       );
-      if (video.current) {
-        video.current.srcObject = s;
-        await video.current.play();
-      }
-      setMuted(false);
-      setCameraOff(false);
-      setUrl((old) => {
-        if (old) URL.revokeObjectURL(old);
-        return "";
-      });
-      recordingBlob.current = null;
-      chunks.current = [];
-      setStatus("ready");
-    } catch (error) {
-      stopStream();
-      const name = error instanceof DOMException ? error.name : "";
-      setError(
-        name === "NotFoundError"
-          ? "Connect a camera and microphone, then try again."
-          : name === "NotReadableError"
-            ? "Your camera may be in use by another app. Close it and try again."
-            : "Allow camera and microphone access in your browser, then try again.",
+    } catch {}
+  }, []);
+  useEffect(() => {
+    const media = matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => {
+      document.documentElement.dataset.theme =
+        theme === "system" ? (media.matches ? "dark" : "light") : theme;
+    };
+    apply();
+    try {
+      localStorage.setItem("glass-theme", theme);
+    } catch {}
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, [theme]);
+  useEffect(() => {
+    void refreshCameras();
+    navigator.mediaDevices?.addEventListener("devicechange", refreshCameras);
+    return () => {
+      navigator.mediaDevices?.removeEventListener(
+        "devicechange",
+        refreshCameras,
       );
-      setStatus("error");
-    } finally {
-      setBusy(false);
-    }
-  }, [stopStream]);
-  useEffect(() => () => stopStream(), [stopStream]);
+      stopStream();
+      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+    };
+  }, [refreshCameras, stopStream]);
   useEffect(() => {
     if (status !== "recording" && status !== "preview") return;
-    const warn = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = "";
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
     };
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [status]);
   useEffect(() => {
     if (status !== "recording") return;
-    const id = setInterval(() => setElapsed((v) => v + 1), 1000);
+    const id = setInterval(() => setElapsed((n) => n + 1), 1000);
     return () => clearInterval(id);
   }, [status]);
-  const draw = useCallback(() => {
-    const c = canvas.current,
-      v = video.current;
-    if (!c || !v || v.readyState < 2) {
-      frame.current = requestAnimationFrame(draw);
-      return;
-    }
-    const { width: w, height: h } = sizes[ratio];
-    if (c.width !== w) c.width = w;
-    if (c.height !== h) c.height = h;
-    const x = c.getContext("2d");
-    if (!x) return;
-    const sr = v.videoWidth / v.videoHeight,
-      tr = w / h;
-    let sw = v.videoWidth,
-      sh = v.videoHeight,
-      sx = 0,
-      sy = 0;
-    if (sr > tr) {
-      sw = v.videoHeight * tr;
-      sx = (v.videoWidth - sw) / 2;
-    } else {
-      sh = v.videoWidth / tr;
-      sy = (v.videoHeight - sh) / 2;
-    }
-    x.save();
-    x.translate(w, 0);
-    x.scale(-1, 1);
-    x.drawImage(v, sx, sy, sw, sh, 0, 0, w, h);
-    x.restore();
-    frame.current = requestAnimationFrame(draw);
-  }, [ratio]);
-  const record = () => {
-    if (
-      !canvas.current ||
-      !stream.current ||
-      typeof MediaRecorder === "undefined"
-    ) {
-      setFormatError(
-        "Recording is unavailable. Please restart the app and try again.",
-      );
-      return;
-    }
-    const recordingTypes = [
-        "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
-        "video/mp4;codecs=avc1.4D401E,mp4a.40.2",
-        "video/mp4;codecs=avc1,mp4a",
-        "video/mp4",
-        "video/webm;codecs=vp9,opus",
-        "video/webm;codecs=vp8,opus",
-        "video/webm",
-      ],
-      mime = recordingTypes.find((type) => MediaRecorder.isTypeSupported(type));
-    if (!mime) {
-      setFormatError(
-        "No supported recording format is available. Please restart the app and try again.",
-      );
-      return;
-    }
+  const startCamera = async (device = selectedCamera, nextMode = mode) => {
+    setBusy(true);
+    stopStream();
+    setStatus("idle");
+    setError("");
     setFormatError("");
-    const ext = mime.startsWith("video/mp4") ? "mp4" : "webm";
-    setExtension(ext);
+    try {
+      if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia)
+        throw Error("Open the HTTPS website in a supported browser.");
+      const s = await navigator.mediaDevices.getUserMedia({
+        video: {
+          ...(device
+            ? { deviceId: { exact: device } }
+            : { facingMode: "user" }),
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+        audio: nextMode === "video",
+      });
+      stream.current = s;
+      setSelectedCamera(s.getVideoTracks()[0].getSettings().deviceId || device);
+      s.getVideoTracks()[0].onended = () => {
+        if (recorder.current?.state === "recording") recorder.current.stop();
+        else {
+          stopStream();
+          setError(
+            "Camera disconnected. Select an available camera and try again.",
+          );
+          setStatus("error");
+        }
+        void refreshCameras();
+      };
+      if (video.current) {
+        video.current.srcObject = s;
+        await video.current.play();
+      }
+      await refreshCameras();
+      setMuted(false);
+      setCameraOff(false);
+      replaceUrl("");
+      recordingBlob.current = null;
+      center.current = { x: 0.5, y: 0.5 };
+      target.current = { x: 0.5, y: 0.5, time: 0 };
+      setStatus("ready");
+    } catch (e) {
+      stopStream();
+      setError(
+        e instanceof DOMException
+          ? e.name === "OverconstrainedError"
+            ? "This camera is unavailable. Choose another camera."
+            : e.name === "NotFoundError"
+              ? "No camera or microphone found. Photo mode only needs a camera."
+              : "Allow camera access (and microphone for video), or close other apps using the camera."
+          : String(e),
+      );
+      setStatus("error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  useEffect(() => {
+    workerReady.current = false;
+    pendingFrame.current = false;
+    target.current = { x: 0.5, y: 0.5, time: 0 };
+    if (!follow || !active || cameraOff) {
+      setTracking(follow ? "Waiting for camera" : "Off");
+      return;
+    }
+    if (!window.Worker || !window.createImageBitmap) {
+      setTracking("Unavailable in this browser");
+      return;
+    }
+    setTracking("Loading local model…");
+    const w = new Worker(new URL("./face.worker.ts", import.meta.url));
+    worker.current = w;
+    const fail = () => {
+      workerReady.current = false;
+      pendingFrame.current = false;
+      target.current = { x: 0.5, y: 0.5, time: 0 };
+      setTracking("Unavailable — turn off and retry");
+      w.terminate();
+    };
+    const timeout = setTimeout(fail, 30000);
+    w.onerror = fail;
+    w.onmessage = ({ data }) => {
+      if (data.type === "ready") {
+        clearTimeout(timeout);
+        workerReady.current = true;
+        setTracking("Looking for a face");
+      } else if (data.type === "result") {
+        pendingFrame.current = false;
+        if (data.face) {
+          target.current = { ...data.face, time: performance.now() };
+          setTracking("Following face");
+        } else setTracking("Looking for a face");
+      } else if (data.type === "error") {
+        clearTimeout(timeout);
+        fail();
+      }
+    };
+    w.postMessage({ type: "init", base: new URL(".", document.baseURI).href });
+    return () => {
+      clearTimeout(timeout);
+      workerReady.current = false;
+      worker.current = null;
+      w.terminate();
+    };
+  }, [follow, active, cameraOff]);
+  useEffect(() => {
+    if (!active) return;
+    let id = 0,
+      cancelled = false,
+      last = performance.now();
+    const paint = (now: number) => {
+      if (cancelled) return;
+      const v = video.current,
+        c = canvas.current;
+      if (v && c && v.readyState >= 2 && v.videoWidth) {
+        const { width, height } = sizes[ratio];
+        if (c.width !== width) c.width = width;
+        if (c.height !== height) c.height = height;
+        const tracked = follow && workerReady.current && !cameraOff;
+        const goal =
+          tracked && now - target.current.time < 1200
+            ? target.current
+            : { x: 0.5, y: 0.5 };
+        const easing = 1 - Math.exp(-Math.min(now - last, 100) / 250);
+        center.current.x += (goal.x - center.current.x) * easing;
+        center.current.y += (goal.y - center.current.y) * easing;
+        const { sx, sy, sw, sh } = cropFrame(
+          v.videoWidth,
+          v.videoHeight,
+          width / height,
+          center.current.x,
+          center.current.y,
+          tracked,
+        );
+        const ctx = c.getContext("2d");
+        if (ctx) {
+          ctx.setTransform(-1, 0, 0, 1, width, 0);
+          ctx.drawImage(v, sx, sy, sw, sh, 0, 0, width, height);
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+        }
+        if (
+          tracked &&
+          !pendingFrame.current &&
+          now - lastDetect.current > 125
+        ) {
+          pendingFrame.current = true;
+          lastDetect.current = now;
+          const w = worker.current;
+          createImageBitmap(v, {
+            resizeWidth: 640,
+            resizeHeight: Math.round((v.videoHeight / v.videoWidth) * 640),
+          })
+            .then((bitmap) => {
+              if (cancelled || !workerReady.current || worker.current !== w) {
+                bitmap.close();
+                pendingFrame.current = false;
+                return;
+              }
+              w!.postMessage({ type: "frame", bitmap, time: now }, [bitmap]);
+            })
+            .catch(() => {
+              pendingFrame.current = false;
+              workerReady.current = false;
+              setTracking("Unavailable — turn off and retry");
+            });
+        }
+      }
+      last = now;
+      id = requestAnimationFrame(paint);
+    };
+    id = requestAnimationFrame(paint);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(id);
+    };
+  }, [active, ratio, follow, cameraOff]);
+  const record = () => {
+    if (!canvas.current || !stream.current) return;
+    if (typeof MediaRecorder === "undefined") {
+      setFormatError(
+        "Video recording is unavailable in this browser. You can still take photos.",
+      );
+      return;
+    }
+    const mime = [
+      "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
+      "video/mp4",
+      "video/webm;codecs=vp8,opus",
+      "video/webm",
+    ].find((t) => MediaRecorder.isTypeSupported(t));
+    if (!mime) {
+      setFormatError("No supported video recording format. Try photo mode.");
+      return;
+    }
     let out: MediaStream | undefined;
     try {
-      draw();
       out = canvas.current.captureStream(30);
       if (!muted)
         stream.current
@@ -212,78 +329,96 @@ export default function Home() {
           .forEach((t) => out!.addTrack(t.clone()));
       const r = new MediaRecorder(out, {
         mimeType: mime,
-        videoBitsPerSecond: 8_000_000,
+        videoBitsPerSecond: 8000000,
       });
-      chunks.current = [];
-      r.ondataavailable = (e) => e.data.size && chunks.current.push(e.data);
+      const chunks: Blob[] = [];
       let failed = false;
+      r.ondataavailable = (e) => {
+        if (e.data.size) chunks.push(e.data);
+      };
       r.onstop = () => {
-        if (failed) return;
-        const blob = new Blob(chunks.current, { type: r.mimeType });
-        recordingBlob.current = blob;
-        setUrl(URL.createObjectURL(blob));
         out?.getTracks().forEach((t) => t.stop());
         stopStream();
+        if (failed) return;
+        const blob = new Blob(chunks, { type: r.mimeType });
+        recordingBlob.current = blob;
+        replaceUrl(URL.createObjectURL(blob));
         setStatus("preview");
       };
       r.onerror = () => {
         failed = true;
-        if (frame.current) cancelAnimationFrame(frame.current);
         out?.getTracks().forEach((t) => t.stop());
         stopStream();
-        setError("Recording failed. Please set up the camera again.");
+        setError("Recording failed. Please reconnect the camera.");
         setStatus("error");
       };
       recorder.current = r;
       r.start(1000);
+      setExtension(mime.startsWith("video/mp4") ? "mp4" : "webm");
       setElapsed(0);
+      setFormatError("");
       setStatus("recording");
     } catch {
       out?.getTracks().forEach((t) => t.stop());
-      if (frame.current) cancelAnimationFrame(frame.current);
       setFormatError("Could not start recording. Please try again.");
     }
   };
   const stop = () => {
     if (recorder.current?.state === "recording") recorder.current.stop();
-    if (frame.current) cancelAnimationFrame(frame.current);
+  };
+  const takePhoto = () => {
+    if (!canvas.current || status !== "ready") return;
+    setBusy(true);
+    canvas.current.toBlob((blob) => {
+      setBusy(false);
+      if (!blob) {
+        setFormatError("Could not capture photo. Try again.");
+        return;
+      }
+      recordingBlob.current = blob;
+      setExtension("png");
+      replaceUrl(URL.createObjectURL(blob));
+      stopStream();
+      setStatus("preview");
+    }, "image/png");
   };
   const save = async () => {
     if (!recordingBlob.current) return;
     setBusy(true);
     setFormatError("");
     try {
-      const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-      const filename = `Glass-Recording-${ratio.replace(":", "x")}-${stamp}.${extension}`;
-      if (window.glassRecorder) {
+      const name = `Glass-${extension === "png" ? "Photo" : "Recording"}-${ratio.replace(":", "x")}-${new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19)}.${extension}`;
+      if (window.glassRecorder && extension !== "png")
         await window.glassRecorder.save(
           await recordingBlob.current.arrayBuffer(),
-          filename,
+          name,
         );
-      } else {
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
+      else {
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
       }
     } catch {
-      setFormatError("Could not save the recording. Try another folder.");
+      setFormatError("Could not save. Please try again.");
     } finally {
       setBusy(false);
     }
   };
   const toggleMic = () => {
-      const next = !muted;
-      stream.current?.getAudioTracks().forEach((t) => (t.enabled = !next));
-      setMuted(next);
-    },
-    toggleCamera = () => {
-      const next = !cameraOff;
-      stream.current?.getVideoTracks().forEach((t) => (t.enabled = !next));
-      setCameraOff(next);
-    };
+    stream.current?.getAudioTracks().forEach((t) => (t.enabled = muted));
+    setMuted(!muted);
+  };
+  const toggleCamera = () => {
+    stream.current?.getVideoTracks().forEach((t) => (t.enabled = cameraOff));
+    setCameraOff(!cameraOff);
+  };
+  const changeMode = (next: Mode) => {
+    setMode(next);
+    if (status === "ready") void startCamera(selectedCamera, next);
+  };
   return (
     <main className="app-shell">
       <div className="ambient one" />
@@ -296,6 +431,18 @@ export default function Home() {
           <h1>Glass Recorder</h1>
           <p>A little space to capture your best.</p>
         </div>
+        <label className="theme-control">
+          Appearance
+          <select
+            aria-label="Appearance"
+            value={theme}
+            onChange={(e) => setTheme(e.target.value as Theme)}
+          >
+            <option value="system">System</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </label>
         <div className="privacy">
           <i /> Private by design
         </div>
@@ -307,12 +454,17 @@ export default function Home() {
           >
             <video
               ref={video}
-              className="feed"
+              className="source-video"
               playsInline
               muted
               aria-label="Live camera preview"
             />
-            {url && status === "preview" && (
+            <canvas
+              ref={canvas}
+              className="capture-canvas"
+              aria-label="Framed camera preview"
+            />
+            {url && status === "preview" && extension !== "png" && (
               <video
                 src={url}
                 className="playback"
@@ -320,6 +472,13 @@ export default function Home() {
                 controls
                 autoPlay
                 aria-label="Recorded video preview"
+              />
+            )}
+            {url && status === "preview" && extension === "png" && (
+              <img
+                src={url}
+                className="playback"
+                alt="Captured photo preview"
               />
             )}
             {(status === "idle" || status === "error") && (
@@ -339,7 +498,7 @@ export default function Home() {
                 <button
                   className="primary compact"
                   disabled={busy}
-                  onClick={startCamera}
+                  onClick={() => void startCamera()}
                 >
                   <Video size={17} />
                   {status === "error" ? "Try again" : "Turn on camera"}
@@ -384,6 +543,24 @@ export default function Home() {
                     : "Standby"}
             </span>
           </div>
+          <div className="capture-mode" role="group" aria-label="Capture mode">
+            <button
+              aria-pressed={mode === "video"}
+              disabled={busy || status === "recording" || status === "preview"}
+              onClick={() => changeMode("video")}
+            >
+              <Video size={16} />
+              Video
+            </button>
+            <button
+              aria-pressed={mode === "photo"}
+              disabled={busy || status === "recording" || status === "preview"}
+              onClick={() => changeMode("photo")}
+            >
+              <Camera size={16} />
+              Photo
+            </button>
+          </div>
           <div className="group">
             <label>Aspect ratio</label>
             <div
@@ -412,28 +589,54 @@ export default function Home() {
             </div>
           </div>
           <div className="group">
-            <label>Camera</label>
-            <button
-              className="device"
-              title="Reconnect the default camera"
-              onClick={startCamera}
+            <label htmlFor="camera-select">Camera</label>
+            <select
+              id="camera-select"
+              className="camera-select"
+              value={selectedCamera}
               disabled={busy || status === "recording" || status === "preview"}
+              onChange={(e) => {
+                setSelectedCamera(e.target.value);
+                if (status === "ready") void startCamera(e.target.value);
+              }}
             >
-              <span>
-                <Camera size={18} />
-              </span>
-              <div>
-                <b>{cameraName}</b>
-                <small>
-                  {status === "ready"
-                    ? "Connected · 30 fps"
-                    : "Default input · 30 fps"}
-                </small>
-              </div>
-              <span>
-                <RefreshCw size={14} />
-              </span>
-            </button>
+              <option value="">System default</option>
+              {selectedCamera &&
+                !cameras.some((c) => c.deviceId === selectedCamera) && (
+                  <option value={selectedCamera}>Camera unavailable</option>
+                )}
+              {cameras
+                .filter((c) => c.deviceId)
+                .map((c, i) => (
+                  <option key={c.deviceId} value={c.deviceId}>
+                    {c.label || `Camera ${i + 1}`}
+                  </option>
+                ))}
+            </select>
+            <p className="control-note">
+              Allow camera access to see device names.
+            </p>
+          </div>
+          <div className="group follow-control">
+            <label className="switch-label">
+              <span>Follow my face</span>
+              <input
+                type="checkbox"
+                role="switch"
+                checked={follow}
+                onChange={(e) => setFollow(e.target.checked)}
+                disabled={status === "preview" || busy}
+              />
+            </label>
+            <p className="control-note" role="status">
+              {follow ? tracking : "On-device auto-framing · no uploads"}
+            </p>
+            {follow && (
+              <p className="control-note">
+                1.2× digital crop · follows the largest face. Turn off Apple
+                Center Stage to avoid double tracking.
+              </p>
+            )}
           </div>
           <div className="quick">
             <button
@@ -446,11 +649,11 @@ export default function Home() {
             </button>
             <button
               onClick={toggleMic}
-              aria-pressed={!muted}
-              disabled={status !== "ready"}
+              aria-pressed={!muted && mode === "video"}
+              disabled={status !== "ready" || mode === "photo"}
             >
               <i>{muted ? <MicOff /> : <Mic />}</i>
-              {muted ? "Muted" : "Mic on"}
+              {mode === "photo" ? "No audio" : muted ? "Muted" : "Mic on"}
             </button>
           </div>
           <div className="actions">
@@ -463,10 +666,10 @@ export default function Home() {
                 <button
                   className="secondary"
                   disabled={busy}
-                  onClick={startCamera}
+                  onClick={() => void startCamera()}
                 >
                   <RefreshCw />
-                  Record another
+                  {mode === "photo" ? "Take another" : "Record another"}
                 </button>
               </>
             ) : status === "recording" ? (
@@ -478,17 +681,27 @@ export default function Home() {
               <button
                 className="primary"
                 disabled={busy || cameraOff}
-                onClick={status === "ready" ? record : startCamera}
+                onClick={() =>
+                  status === "ready"
+                    ? mode === "photo"
+                      ? takePhoto()
+                      : record()
+                    : void startCamera()
+                }
               >
                 <i className="record-dot" />
-                {status === "ready" ? "Start recording" : "Set up camera"}
+                {status === "ready"
+                  ? mode === "photo"
+                    ? "Take photo"
+                    : "Start recording"
+                  : "Set up camera"}
               </button>
             )}
             <p className={formatError ? "format-error" : ""}>
               {formatError ||
                 (status === "preview"
-                  ? "Your recording is ready to save."
-                  : `${sizes[ratio].width} × ${sizes[ratio].height} · MP4 when available, otherwise WebM`)}
+                  ? "Your capture is ready to save."
+                  : `${sizes[ratio].width} × ${sizes[ratio].height} · ${mode === "photo" ? "PNG photo" : "MP4 or WebM video"}`)}
             </p>
           </div>
         </aside>
@@ -500,7 +713,6 @@ export default function Home() {
         </span>
         <span>Keep this tab open while recording · Save before leaving</span>
       </footer>
-      <canvas ref={canvas} />
     </main>
   );
 }

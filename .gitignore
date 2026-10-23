@@ -5,3 +5,5 @@ test-results/
 .DS_Store
 
 build/icon.iconset/
+
+public/vision/
