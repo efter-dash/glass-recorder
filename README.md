@@ -56,6 +56,8 @@ The [live web version](https://efter-dash.github.io/glass-recorder/) always rece
 | Mac — Intel | [DMG](https://github.com/efter-dash/glass-recorder/releases/download/v0.2.0/Glass-Recorder-0.2.0-mac-x64.dmg) |
 | Windows — x64 | [Installer](https://github.com/efter-dash/glass-recorder/releases/download/v0.2.0/Glass-Recorder-0.2.0-win-x64.exe) |
 
+**Earlier working preview:** [v0.1.1 Mac ARM64 ZIP](https://github.com/efter-dash/glass-recorder/releases/download/v0.1.1/Glass-Recorder-0.1.1-mac-arm64.zip) · [v0.1.1 Windows installer](https://github.com/efter-dash/glass-recorder/releases/download/v0.1.1/Glass-Recorder-0.1.1-win-x64.exe). Kept for reference; these older binaries do not have the update button.
+
 [All releases and ZIP alternatives](https://github.com/efter-dash/glass-recorder/releases). The owner reports that the earlier ARM64 build works on their Mac; this does not establish compatibility on every Mac. These builds are **unsigned previews**, not Developer ID signed/notarized or Windows code-signed. Gatekeeper/SmartScreen can warn or block them; the website is the no-install alternative. Do not disable OS security protections to install.
 
 ### Updates
