@@ -28,6 +28,8 @@ const assert = require("node:assert/strict");
       const result = await page.locator(".playback").evaluate(async (v) => {
         await new Promise((resolve, reject) => {
           if (v.readyState >= 1) return resolve();
+          if (v.error) return reject(new Error(v.error.message));
+          setTimeout(() => reject(new Error("Playback metadata timed out: " + (v.error?.message || v.readyState))), 15000);
           v.onloadedmetadata = resolve;
           v.onerror = reject;
         });
@@ -80,7 +82,13 @@ const assert = require("node:assert/strict");
     assert.deepEqual(errors, []);
     console.log("Desktop recording smoke test passed");
   } finally {
-    app.process().kill("SIGKILL");
+    await app
+      .evaluate(({ BrowserWindow }) => {
+        for (const window of BrowserWindow.getAllWindows())
+          window.removeAllListeners("close");
+      })
+      .catch(() => {});
+    await app.close();
   }
 })().catch((error) => {
   console.error(error);
