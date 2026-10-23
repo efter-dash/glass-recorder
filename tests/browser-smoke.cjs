@@ -50,12 +50,22 @@ const path = require("node:path");
       `http://127.0.0.1:${server.address().port}/glass-recorder/`,
     );
     await expect(page.locator(".brand img")).toBeVisible();
-    await page.getByLabel("Appearance").selectOption("dark");
+    await page.getByRole("button", { name: "Dark", exact: true }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
     await page.reload();
-    await expect(page.getByLabel("Appearance")).toHaveValue("dark");
-    await page.getByLabel("Appearance").selectOption("light");
+    await expect(
+      page.getByRole("button", { name: "Dark", exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await page.getByRole("button", { name: "Light", exact: true }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    await page.getByRole("button", { name: "System", exact: true }).click();
+    await page.emulateMedia({ colorScheme: "dark" });
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await page.emulateMedia({ colorScheme: "light" });
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    await page.getByRole("button", { name: "Dark", exact: true }).click();
+    await page.emulateMedia({ colorScheme: "light" });
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
     await page.getByRole("button", { name: "Turn on camera" }).click();
     await page.getByText("Camera ready", { exact: true }).waitFor();
     const options = await page
@@ -125,6 +135,15 @@ const path = require("node:path");
         .getByRole("button", { name: "Take photo", exact: true })
         .click();
       await page.getByRole("button", { name: "Save PNG" }).waitFor();
+      await expect(page.getByAltText("Captured photo preview")).toBeVisible();
+      await expect
+        .poll(() =>
+          page
+            .getByAltText("Captured photo preview")
+            .evaluate((img) => img.complete && img.naturalWidth > 0),
+        )
+        .toBe(true);
+
       const pending = page.waitForEvent("download");
       await page.getByRole("button", { name: "Save PNG" }).click();
       const download = await pending;
@@ -140,7 +159,12 @@ const path = require("node:path");
     }
     if (process.env.SCREENSHOT_DIR) {
       for (const theme of ["light", "dark"]) {
-        await page.getByLabel("Appearance").selectOption(theme);
+        await page
+          .getByRole("button", {
+            name: theme === "dark" ? "Dark" : "Light",
+            exact: true,
+          })
+          .click();
         await page.screenshot({
           path: path.join(process.env.SCREENSHOT_DIR, theme + ".png"),
           fullPage: true,

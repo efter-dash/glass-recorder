@@ -15,6 +15,7 @@ test("packages only the offline app and declares camera consent", () => {
 test("built UI uses local relative assets and restricts connections to same-origin assets", () => {
   const html = fs.readFileSync("dist/index.html", "utf8");
   assert.match(html, /src="\.\/assets\//);
+  assert.match(html, /img-src 'self' data: blob:/);
   assert.match(html, /connect-src 'self'/);
   assert.doesNotMatch(html, /https?:\/\//);
 });

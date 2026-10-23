@@ -431,18 +431,22 @@ export default function Home() {
           <h1>Glass Recorder</h1>
           <p>A little space to capture your best.</p>
         </div>
-        <label className="theme-control">
-          Appearance
-          <select
-            aria-label="Appearance"
-            value={theme}
-            onChange={(e) => setTheme(e.target.value as Theme)}
-          >
-            <option value="system">System</option>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
-        </label>
+        <div className="theme-control" role="group" aria-label="Appearance">
+          {(["light", "dark", "system"] as Theme[]).map((choice) => (
+            <button
+              key={choice}
+              type="button"
+              aria-pressed={theme === choice}
+              onClick={() => setTheme(choice)}
+            >
+              {choice === "light"
+                ? "Light"
+                : choice === "dark"
+                  ? "Dark"
+                  : "System"}
+            </button>
+          ))}
+        </div>
         <div className="privacy">
           <i /> Private by design
         </div>
