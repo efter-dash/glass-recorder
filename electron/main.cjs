@@ -10,6 +10,7 @@ function openWindow() {
     minWidth: 700,
     minHeight: 650,
     title: "Glass Recorder",
+    icon: path.join(__dirname, "../dist/app-icon.png"),
     backgroundColor: "#17202a",
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),

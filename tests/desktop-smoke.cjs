@@ -17,6 +17,19 @@ const assert = require("node:assert/strict");
     const errors = [];
     page.on("console", (message) => console.log("renderer:", message.text()));
     page.on("pageerror", (error) => errors.push(error.message));
+    await page.locator(".brand img").waitFor();
+    assert.equal(
+      await page
+        .locator(".brand img")
+        .evaluate((img) => img.complete && img.naturalWidth > 0),
+      true,
+    );
+    await page.emulateMedia({ colorScheme: "light" });
+    await page.screenshot({ path: "release/icon-ui-preview.png" });
+    await page.emulateMedia({ colorScheme: "dark" });
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: "release/icon-ui-dark.png" });
+    await page.emulateMedia({ colorScheme: "light" });
     await page.getByRole("button", { name: "Turn on camera" }).click();
     await page.getByText("Camera ready", { exact: true }).waitFor();
     for (const ratio of ["9:16", "3:4", "1:1", "16:9"]) {
@@ -29,7 +42,16 @@ const assert = require("node:assert/strict");
         await new Promise((resolve, reject) => {
           if (v.readyState >= 1) return resolve();
           if (v.error) return reject(new Error(v.error.message));
-          setTimeout(() => reject(new Error("Playback metadata timed out: " + (v.error?.message || v.readyState))), 15000);
+          setTimeout(
+            () =>
+              reject(
+                new Error(
+                  "Playback metadata timed out: " +
+                    (v.error?.message || v.readyState),
+                ),
+              ),
+            15000,
+          );
           v.onloadedmetadata = resolve;
           v.onerror = reject;
         });

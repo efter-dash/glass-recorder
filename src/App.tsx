@@ -7,7 +7,6 @@ import {
   Mic,
   MicOff,
   RefreshCw,
-  Sparkles,
   Video,
   VideoOff,
 } from "lucide-react";
@@ -258,14 +257,14 @@ export default function Home() {
       <div className="ambient two" />
       <header className="topbar glass">
         <div className="brand">
-          <Sparkles size={18} />
+          <img src="./app-icon.png" alt="" className="app-icon" />
         </div>
         <div>
           <h1>Glass Recorder</h1>
-          <p>Private recording, right on your device</p>
+          <p>A little space to capture your best.</p>
         </div>
         <div className="privacy">
-          <i /> Stored locally
+          <i /> Private by design
         </div>
       </header>
       <section className="workspace">
@@ -293,7 +292,7 @@ export default function Home() {
             {(status === "idle" || status === "error") && (
               <div className="empty">
                 <div className="camera-orb">
-                  <Camera size={30} />
+                  <img src="./app-icon.png" alt="" className="app-icon" />
                 </div>
                 <h2>
                   {status === "error"
@@ -337,14 +336,28 @@ export default function Home() {
         <aside className="panel glass">
           <div className="heading">
             <div>
-              <span>Capture settings</span>
-              <h2>Frame your video</h2>
+              <span>Your setup</span>
+              <h2>Make it yours.</h2>
             </div>
-            <i />
+            <span
+              className={`setup-status ${status === "recording" ? "live" : ""}`}
+            >
+              {status === "recording"
+                ? "Recording"
+                : status === "ready"
+                  ? "Ready"
+                  : status === "preview"
+                    ? "Captured"
+                    : "Standby"}
+            </span>
           </div>
           <div className="group">
             <label>Aspect ratio</label>
-            <div className="segments" role="radiogroup">
+            <div
+              className="segments"
+              role="radiogroup"
+              aria-label="Aspect ratio"
+            >
               {(["9:16", "3:4", "1:1", "16:9"] as Ratio[]).map((r) => (
                 <button
                   key={r}
@@ -369,6 +382,7 @@ export default function Home() {
             <label>Camera</label>
             <button
               className="device"
+              title="Reconnect the default camera"
               onClick={startCamera}
               disabled={busy || status === "recording" || status === "preview"}
             >
@@ -377,17 +391,31 @@ export default function Home() {
               </span>
               <div>
                 <b>{cameraName}</b>
-                <small>Preferred camera · 30 fps</small>
+                <small>
+                  {status === "ready"
+                    ? "Connected · 30 fps"
+                    : "Default input · 30 fps"}
+                </small>
               </div>
-              <span>⌄</span>
+              <span>
+                <RefreshCw size={14} />
+              </span>
             </button>
           </div>
           <div className="quick">
-            <button onClick={toggleCamera} disabled={status !== "ready"}>
+            <button
+              onClick={toggleCamera}
+              aria-pressed={!cameraOff}
+              disabled={status !== "ready"}
+            >
               <i>{cameraOff ? <VideoOff /> : <Video />}</i>
               {cameraOff ? "Camera off" : "Camera on"}
             </button>
-            <button onClick={toggleMic} disabled={status !== "ready"}>
+            <button
+              onClick={toggleMic}
+              aria-pressed={!muted}
+              disabled={status !== "ready"}
+            >
               <i>{muted ? <MicOff /> : <Mic />}</i>
               {muted ? "Muted" : "Mic on"}
             </button>

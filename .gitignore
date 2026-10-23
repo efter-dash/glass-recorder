@@ -3,3 +3,5 @@ dist/
 release/
 test-results/
 .DS_Store
+
+build/icon.iconset/

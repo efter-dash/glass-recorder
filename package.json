@@ -1,6 +1,6 @@
 {
   "name": "glass-recorder",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Private, local camera recording for Windows and macOS",
   "author": "efter-dash",
@@ -48,12 +48,14 @@
       "extendInfo": {
         "NSCameraUsageDescription": "Glass Recorder uses your camera to record video locally.",
         "NSMicrophoneUsageDescription": "Glass Recorder uses your microphone to record audio locally."
-      }
+      },
+      "icon": "build/icon.icns"
     },
     "win": {
       "target": [
         "nsis"
-      ]
+      ],
+      "icon": "build/icon.ico"
     },
     "nsis": {
       "oneClick": false,
