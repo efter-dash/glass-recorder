@@ -1147,3 +1147,30 @@ footer {
   flex-wrap: wrap;
   gap: 12px;
 }
+/* Give the supplied lens tile a deliberate shape without redrawing the artwork. */
+.app-icon {
+  border-radius: 22%;
+  background: #0c2047;
+  box-shadow:
+    0 0 0 1px #54eaff38,
+    0 5px 18px #006c9a25;
+  filter: none;
+}
+.brand {
+  width: 58px;
+  height: 58px;
+}
+.camera-orb {
+  width: 120px;
+  height: 120px;
+}
+.camera-orb .app-icon {
+  box-shadow:
+    0 0 0 1px #54eaff50,
+    0 0 36px #10c9ef28;
+}
+html[data-theme="dark"] .brand .app-icon {
+  box-shadow:
+    0 0 0 1px #54eaff50,
+    0 3px 18px #00c7ff20;
+}

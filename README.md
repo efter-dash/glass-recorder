@@ -1,6 +1,6 @@
 # Glass Recorder
 
-<p align="center"><img src="public/app-icon.png" alt="Glowing Glass Recorder camera" width="128" /></p>
+<p align="center"><img src="public/app-icon.png" alt="Cyan Glass Recorder Lens" width="128" /></p>
 
 ## Open the recorder — no installation
 
@@ -50,11 +50,11 @@ Automated Chromium tests exercise all four video and PNG ratios, playback, downl
 
 The [live web version](https://efter-dash.github.io/glass-recorder/) always receives the latest successfully deployed `main` updates. The desktop app runs locally and is updated separately through published GitHub releases.
 
-| Platform | Download v0.2.0 |
+| Platform | Download v0.2.1 |
 |---|---|
-| Mac — Apple Silicon (M1 and later) | [DMG](https://github.com/efter-dash/glass-recorder/releases/download/v0.2.0/Glass-Recorder-0.2.0-mac-arm64.dmg) |
-| Mac — Intel | [DMG](https://github.com/efter-dash/glass-recorder/releases/download/v0.2.0/Glass-Recorder-0.2.0-mac-x64.dmg) |
-| Windows — x64 | [Installer](https://github.com/efter-dash/glass-recorder/releases/download/v0.2.0/Glass-Recorder-0.2.0-win-x64.exe) |
+| Mac — Apple Silicon (M1 and later) | [DMG](https://github.com/efter-dash/glass-recorder/releases/download/v0.2.1/Glass-Recorder-0.2.1-mac-arm64.dmg) |
+| Mac — Intel | [DMG](https://github.com/efter-dash/glass-recorder/releases/download/v0.2.1/Glass-Recorder-0.2.1-mac-x64.dmg) |
+| Windows — x64 | [Installer](https://github.com/efter-dash/glass-recorder/releases/download/v0.2.1/Glass-Recorder-0.2.1-win-x64.exe) |
 
 **Earlier working preview:** [v0.1.1 Mac ARM64 ZIP](https://github.com/efter-dash/glass-recorder/releases/download/v0.1.1/Glass-Recorder-0.1.1-mac-arm64.zip) · [v0.1.1 Windows installer](https://github.com/efter-dash/glass-recorder/releases/download/v0.1.1/Glass-Recorder-0.1.1-win-x64.exe). Kept for reference; these older binaries do not have the update button.
 

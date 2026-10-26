@@ -1,7 +1,12 @@
-# Glass Recorder icon
+# Cyan Glass Recorder Lens
 
-Created with the built-in image generation tool using the user's supplied cyan glowing character icon as a style reference. Design approved by the user. Native packaging uses icon.icns (macOS) and icon.ico (Windows, PNG entries at 16/32/48/64/128/256). icon.png is the 1024px master; public/app-icon.png is the 256px UI asset. Transparency is preserved. macOS sizes were generated with sips and iconutil; Windows ICO packages resized PNG entries.
+The user-supplied `Cyan Glass Recorder Lens.png` replaces the previous generated camera artwork. `icon-source.png` preserves the original 1254 × 1254 image unchanged. No AI redraw, recoloring, or cropping is applied.
 
-## Generation prompt
+- `icon.png`: 1024 × 1024 packaging master.
+- `icon.icns`: macOS iconset, 16–1024 px representations.
+- `icon.ico`: Windows PNG-backed entries at 16, 32, 48, 64, 128, and 256 px.
+- `public/app-icon.png`, `app-icon-512.png`: standard and high-density UI artwork.
+- `public/favicon.ico`: multi-size browser icon.
+- `public/apple-touch-icon.png`: 180 px home-screen/bookmark icon.
 
-Create one polished square desktop app icon for Glass Recorder. Use the attached image only as a style reference: luminous cyan-blue rounded tile, soft milky-white bloom, cute friendly forms. Replace its ghost motif with a clearly recognizable adorable camera: a pillowy frosted-white compact camera body, large glossy blue circular lens, tiny rounded viewfinder and shutter bump; two subtle friendly sparkling highlights in the lens suggest personality without obscuring the camera silhouette. Front-facing, simple bold geometry, premium soft 3D liquid-glass material, strong legibility at small dock/taskbar sizes. Cyan to rich azure rounded-square backing, luminous white/cyan glow contained within the tile; generous but modest transparent margin around tile. One centered icon only, 1024x1024 square, actual transparent exterior, no white canvas, no text, no extra objects, no mockup. Match the reference's gentle glowing character, not its exact ghost design.
+Native sizes are generated with macOS sips/iconutil; ICO containers preserve the resized PNG representations. UI rounding and restrained cyan shadows are CSS-only, so the original artwork remains intact. Browser asset URLs are versioned to refresh cached icons.

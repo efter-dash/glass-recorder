@@ -429,7 +429,12 @@ export default function Home() {
       <div className="ambient two" />
       <header className="topbar glass">
         <div className="brand">
-          <img src="./app-icon.png" alt="" className="app-icon" />
+          <img
+            src="./app-icon.png?v=0.2.1"
+            srcSet="./app-icon-512.png?v=0.2.1 2x"
+            alt=""
+            className="app-icon"
+          />
         </div>
         <div>
           <h1>Glass Recorder</h1>
@@ -492,7 +497,12 @@ export default function Home() {
             {(status === "idle" || status === "error") && (
               <div className="empty">
                 <div className="camera-orb">
-                  <img src="./app-icon.png" alt="" className="app-icon" />
+                  <img
+                    src="./app-icon.png?v=0.2.1"
+                    srcSet="./app-icon-512.png?v=0.2.1 2x"
+                    alt=""
+                    className="app-icon"
+                  />
                 </div>
                 <h2>
                   {status === "error"

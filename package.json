@@ -1,6 +1,6 @@
 {
   "name": "glass-recorder",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "description": "Private, local camera recording for Windows and macOS",
   "author": "efter-dash",
